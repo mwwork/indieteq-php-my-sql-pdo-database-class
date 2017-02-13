@@ -148,7 +148,7 @@ class DB
      */
     public function bind($para, $value)
     {
-        $this->parameters[sizeof($this->parameters)] = [":" . $para , $value];
+        $this->parameters[sizeof($this->parameters)] = [$para , $value];
     }
     /**
      *	@void
@@ -177,19 +177,63 @@ class DB
     public function query($query, $params = null, $fetchmode = PDO::FETCH_ASSOC)
     {
         $query = trim(str_replace("\r", " ", $query));
-        
-        $this->Init($query, $params);
-        
         $rawStatement = explode(" ", preg_replace("/\s+|\t+|\n+/", " ", $query));
-        
         # Which SQL statement is used 
         $statement = strtolower($rawStatement[0]);
+
+        $this->Init($query, $params);
         
         if ($statement === 'select' || $statement === 'show') {
             return $this->sQuery->fetchAll($fetchmode);
-        } elseif ($statement === 'insert' || $statement === 'update' || $statement === 'delete') {
+        } elseif ($statement === 'update' || $statement === 'delete') {
             return $this->sQuery->rowCount();
+        } elseif ($statement === 'insert') {
+            return $this->pdo->lastInsertId();
         } else {
+            return NULL;
+        }
+    }
+
+    //@return lastInsertId
+    public function insert($table,$isArray){
+        if(isset($table) && isset($isArray)){
+            foreach($isArray as $key => $v){
+                $ldb[]="`$key`";
+                $rdb[]="'$v'";
+            }
+        
+            $l=implode(',',$ldb);
+            $r=implode(',',$rdb);
+            $sql="INSERT INTO `$table`  ($l) VALUES ($r)";
+
+            $this->query($sql);
+            return $this->pdo->lastInsertId();
+        }else{
+            return NULL;
+        }
+
+    }
+
+    //@return affected rows
+    public function update($table,$isArray,$where){
+        if(isset($table) && isset($isArray) && isset($where)){
+           foreach($isArray as $key => $v){
+              $kv[]="`$key`='$v'";
+            }
+            $upVal=implode(',',$kv);       
+            $sql="UPDATE `$table` SET $upVal $where";
+            return $this->query($sql);
+        }else{
+            return NULL;
+        }
+    }
+
+    //@return affected rows
+    public function delete($table,$where){
+        if(isset($table) && isset($where)){
+            $sql="DELETE FROM `$table` $where";
+            return $this->query($sql);
+        }else{
             return NULL;
         }
     }
@@ -301,6 +345,6 @@ class DB
         $this->log->write($message);
         
         return $exception;
-    }
+    }   
 }
 ?>
